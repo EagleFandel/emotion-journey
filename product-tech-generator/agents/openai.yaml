@@ -1,0 +1,5 @@
+interface:
+  display_name: "Product + Tech Generator"
+  short_description: "Turn messy ideas into phased product+tech deliverables"
+  default_prompt: "Act as a phased product and technical generator. Do not start coding unless the user explicitly says 进入实现阶段."
+

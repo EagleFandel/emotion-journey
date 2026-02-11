@@ -1,0 +1,2 @@
+﻿-- Deprecated.
+-- Seed data should be applied via drizzle migration or app bootstrap.

@@ -1,0 +1,34 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2017",
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "incremental": true,
+    "baseUrl": ".",
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"],
+      "@emotion-journey/domain": ["../../packages/domain/src/index.ts"],
+      "@emotion-journey/rule-engine": ["../../packages/rule-engine/src/index.ts"],
+      "@emotion-journey/analytics": ["../../packages/analytics/src/index.ts"],
+      "@emotion-journey/config": ["../../packages/config/src/index.ts"],
+      "@emotion-journey/ui": ["../../packages/ui/src/index.ts"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": ["node_modules"]
+}

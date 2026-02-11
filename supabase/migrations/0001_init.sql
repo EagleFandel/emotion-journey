@@ -1,0 +1,2 @@
+﻿-- Deprecated.
+-- Database migrations are now under apps/web/drizzle/.

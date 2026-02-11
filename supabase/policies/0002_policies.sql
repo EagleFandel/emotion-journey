@@ -1,0 +1,2 @@
+﻿-- Deprecated.
+-- Policies are now handled at PostgreSQL role level outside this scaffold.

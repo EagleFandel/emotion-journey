@@ -1,0 +1,17 @@
+{
+  "name": "Emotion Journey",
+  "short_name": "Emotion",
+  "description": "AI时光合伙人 · 情绪旅程图",
+  "start_url": "/today",
+  "display": "standalone",
+  "background_color": "#F6F3EA",
+  "theme_color": "#7BC4F2",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/next.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

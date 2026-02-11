@@ -1,0 +1,2 @@
+-- Deprecated manual migration placeholder.
+-- Use generated migration files in this folder instead.

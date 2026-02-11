@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": {
+      "@emotion-journey/domain": ["packages/domain/src/index.ts"],
+      "@emotion-journey/rule-engine": ["packages/rule-engine/src/index.ts"],
+      "@emotion-journey/analytics": ["packages/analytics/src/index.ts"],
+      "@emotion-journey/config": ["packages/config/src/index.ts"],
+      "@emotion-journey/ui": ["packages/ui/src/index.ts"],
+      "@/*": ["apps/web/*"]
+    }
+  }
+}

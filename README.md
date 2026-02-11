@@ -58,6 +58,21 @@ Runtime behavior:
 - If `DATABASE_URL` is set: use PostgreSQL
 - If `DATABASE_URL` is empty: fallback to in-memory store (dev/demo)
 
+
+## Docker (Recommended for first server deploy)
+
+```bash
+cp .env.docker.example .env.docker
+docker compose --env-file .env.docker up -d --build
+```
+
+This will:
+
+- Start PostgreSQL
+- Run Drizzle migrations automatically
+- Start the web app
+
+Detailed steps: `docs/deployment-docker.md`
 ## Database Commands
 
 ```bash

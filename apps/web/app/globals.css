@@ -10,6 +10,8 @@
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
+  --font-noto: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-inter: "Inter", "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 @theme inline {
@@ -36,7 +38,7 @@ body {
   margin: 0;
   background: radial-gradient(circle at top left, #fff8df 0%, var(--background) 35%, #f0ecdf 100%);
   color: var(--foreground);
-  font-family: var(--font-noto), "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-family: var(--font-noto);
 }
 
 a {

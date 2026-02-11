@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-02-11
+
+### Added
+
+- Docker deployment stack (`Dockerfile`, `docker-compose.yml`, `.env.docker.example`)
+- Docker deployment guide: `docs/deployment-docker.md`
+- Auto migration retry loop before web startup in container
+
+### Changed
+
+- Removed `next/font/google` runtime build dependency
+- Switched to system-font strategy for stable offline/restricted-network builds
+- Updated README with Docker quick deploy steps
+
 ## [0.1.0] - 2026-02-11
 
 ### Added

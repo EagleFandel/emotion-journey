@@ -66,6 +66,14 @@ cp .env.docker.example .env.docker
 docker compose --env-file .env.docker up -d --build
 ```
 
+Production recommended:
+
+```bash
+cp .env.docker.production.example .env.docker
+# edit .env.docker (domain, strong password, admin emails)
+docker compose --env-file .env.docker up -d --build
+```
+
 This will:
 
 - Start PostgreSQL

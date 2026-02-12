@@ -10,6 +10,18 @@ cp .env.docker.example .env.docker
 
 Edit `.env.docker` if needed.
 
+For production server deployment, start from:
+
+```bash
+cp .env.docker.production.example .env.docker
+```
+
+Then set at least:
+
+- `NEXT_PUBLIC_APP_URL=https://your-domain`
+- `POSTGRES_PASSWORD=<strong-random-password>`
+- `ADMIN_USERS=<admin1@example.com,admin2@example.com>`
+
 ## 2) Build and start
 
 ```bash
@@ -54,3 +66,9 @@ docker compose down -v
 - Set proper `NEXT_PUBLIC_APP_URL` to your domain
 - Add admin emails via `ADMIN_USERS`
 - Configure reverse proxy + TLS (Nginx/Caddy/Traefik)
+
+## 7) Recommended production hardening
+
+- Do not expose PostgreSQL to the public internet
+- Bind `POSTGRES_PORT` to localhost or private network only
+- Keep regular backups of volume `emotion_journey_db`

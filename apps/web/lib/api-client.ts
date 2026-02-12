@@ -1,4 +1,5 @@
 import type { DailyReview, MoodEntry, TrendPoint, TriggerInsight } from "@emotion-journey/domain";
+import { getTimezoneOffsetMinutes } from "@/lib/date";
 
 async function toData<T>(response: Response): Promise<T> {
   const payload = await response.json();
@@ -9,7 +10,11 @@ async function toData<T>(response: Response): Promise<T> {
 }
 
 export async function fetchMoodEntries(date: string): Promise<MoodEntry[]> {
-  const response = await fetch(`/api/mood-entries?date=${date}`);
+  const params = new URLSearchParams({
+    date,
+    tzOffsetMinutes: String(getTimezoneOffsetMinutes()),
+  });
+  const response = await fetch(`/api/mood-entries?${params.toString()}`);
   return toData<MoodEntry[]>(response);
 }
 
@@ -17,7 +22,10 @@ export async function generateDailyReview(date: string): Promise<DailyReview> {
   const response = await fetch("/api/reviews/daily/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ date }),
+    body: JSON.stringify({
+      date,
+      tzOffsetMinutes: getTimezoneOffsetMinutes(),
+    }),
   });
   return toData<DailyReview>(response);
 }

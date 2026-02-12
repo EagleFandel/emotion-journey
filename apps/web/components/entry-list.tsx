@@ -8,6 +8,14 @@ interface EntryListProps {
   onChanged: () => Promise<void> | void;
 }
 
+function formatLocalTime(isoDateTime: string): string {
+  return new Date(isoDateTime).toLocaleTimeString("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
 export function EntryList({ entries, onChanged }: EntryListProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftNote, setDraftNote] = useState("");
@@ -30,7 +38,9 @@ export function EntryList({ entries, onChanged }: EntryListProps) {
 
   if (entries.length === 0) {
     return (
-      <div className="paper-card p-4 text-sm text-stone-500">暂无记录，先创建第一条。</div>
+      <div className="paper-card p-4 text-sm text-stone-500">
+        {"\u6682\u65E0\u8BB0\u5F55\uFF0C\u5148\u521B\u5EFA\u7B2C\u4E00\u6761\u3002"}
+      </div>
     );
   }
 
@@ -41,7 +51,8 @@ export function EntryList({ entries, onChanged }: EntryListProps) {
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-1">
               <div className="text-sm text-stone-700">
-                {entry.occurredAt.slice(11, 16)} · 分值 {entry.score}
+                {formatLocalTime(entry.occurredAt)} {"\u00B7 \u5206\u503C "}
+                {entry.score}
               </div>
               {editingId === entry.id ? (
                 <textarea
@@ -50,7 +61,7 @@ export function EntryList({ entries, onChanged }: EntryListProps) {
                   onChange={(event) => setDraftNote(event.target.value)}
                 />
               ) : (
-                <p className="text-sm text-stone-800">{entry.note || "（无备注）"}</p>
+                <p className="text-sm text-stone-800">{entry.note || "\uFF08\u65E0\u5907\u6CE8\uFF09"}</p>
               )}
               <div className="flex flex-wrap gap-1">
                 {entry.tags.map((tag) => (
@@ -69,14 +80,14 @@ export function EntryList({ entries, onChanged }: EntryListProps) {
                     className="rounded-full border border-stone-300 px-2 py-1 text-xs"
                     onClick={() => void handleSave(entry.id)}
                   >
-                    保存
+                    {"\u4FDD\u5B58"}
                   </button>
                   <button
                     type="button"
                     className="rounded-full border border-stone-300 px-2 py-1 text-xs"
                     onClick={() => setEditingId(null)}
                   >
-                    取消
+                    {"\u53D6\u6D88"}
                   </button>
                 </>
               ) : (
@@ -88,7 +99,7 @@ export function EntryList({ entries, onChanged }: EntryListProps) {
                     setDraftNote(entry.note);
                   }}
                 >
-                  编辑
+                  {"\u7F16\u8F91"}
                 </button>
               )}
               <button
@@ -96,7 +107,7 @@ export function EntryList({ entries, onChanged }: EntryListProps) {
                 className="rounded-full border border-red-300 px-2 py-1 text-xs text-red-700"
                 onClick={() => void handleDelete(entry.id)}
               >
-                删除
+                {"\u5220\u9664"}
               </button>
             </div>
           </div>

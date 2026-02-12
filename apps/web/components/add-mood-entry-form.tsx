@@ -71,7 +71,7 @@ export function AddMoodEntryForm({ onCreated }: AddMoodEntryFormProps) {
           className="w-full accent-[var(--accent)]"
           type="range"
           min={0}
-          max={24}
+          max={23}
           step={1}
           value={hour}
           onChange={(event) => setHour(Number(event.target.value))}

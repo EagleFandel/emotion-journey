@@ -7,7 +7,7 @@ import type { MoodEntry } from "@emotion-journey/domain";
 function toChartData(entries: MoodEntry[]) {
   return entries
     .map((entry) => {
-      const hour = Number.parseInt(entry.occurredAt.slice(11, 13), 10);
+      const hour = new Date(entry.occurredAt).getHours();
       return {
         time: hour,
         score: entry.score,

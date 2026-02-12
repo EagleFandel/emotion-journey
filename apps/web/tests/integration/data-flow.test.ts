@@ -22,7 +22,7 @@ describe("integration data flow", () => {
       userId,
       occurredAt: `${date}T09:00:00.000Z`,
       score: 2,
-      note: "完成一个重要任务",
+      note: "finished an important task",
       source: "web",
     });
 
@@ -30,12 +30,12 @@ describe("integration data flow", () => {
       userId,
       occurredAt: `${date}T16:00:00.000Z`,
       score: -3,
-      note: "加班导致压力较大",
+      note: "overtime caused pressure",
       source: "web",
     });
 
     const entries = await listMoodEntriesByDate(userId, date);
-    expect(entries.length).toBe(2);
+    expect(entries).toHaveLength(2);
 
     const result = generateDailyReview(userId, date, entries);
     await saveReview(result.review);
@@ -49,9 +49,9 @@ describe("integration data flow", () => {
   it("applies updated lexicon", async () => {
     await setLexicon([
       {
-        keyword: "晨跑",
-        tags: ["开心"],
-        triggerKey: "运动习惯",
+        keyword: "running",
+        tags: ["\u5F00\u5FC3"],
+        triggerKey: "exercise",
         scoreBias: 2,
       },
     ]);
@@ -60,11 +60,33 @@ describe("integration data flow", () => {
       userId,
       occurredAt: `${date}T07:00:00.000Z`,
       score: 1,
-      note: "今天晨跑30分钟",
+      note: "morning running for 30 minutes",
       source: "web",
     });
 
-    expect(entry.tags).toContain("开心");
-    expect(entry.triggerKeys).toContain("运动习惯");
+    expect(entry.tags).toContain("\u5F00\u5FC3");
+    expect(entry.triggerKeys).toContain("exercise");
+  });
+
+  it("filters daily entries by local timezone offset", async () => {
+    const earlyUtc = await createMoodEntry({
+      userId,
+      occurredAt: "2026-02-10T23:30:00.000Z",
+      score: 1,
+      note: "late evening in UTC",
+      source: "web",
+    });
+
+    await createMoodEntry({
+      userId,
+      occurredAt: "2026-02-11T23:30:00.000Z",
+      score: -1,
+      note: "next day in UTC+8 local time",
+      source: "web",
+    });
+
+    const entries = await listMoodEntriesByDate(userId, date, -480);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.id).toBe(earlyUtc.id);
   });
 });

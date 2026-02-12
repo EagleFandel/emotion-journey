@@ -2,7 +2,7 @@ import {
   and,
   eq,
   gte,
-  sql,
+  lte,
 } from "drizzle-orm";
 import {
   type AdminMetrics,
@@ -71,6 +71,21 @@ function reviewKey(userId: string, date: string): string {
 
 function parseDate(value: string): Date {
   return new Date(value);
+}
+
+function buildUtcRangeForLocalDate(date: string, tzOffsetMinutes: number): { from: Date; to: Date } {
+  const [year, month, day] = date.split("-").map((part) => Number.parseInt(part, 10));
+  if (!year || !month || !day) {
+    throw new Error(`Invalid date: ${date}`);
+  }
+
+  const startMs = Date.UTC(year, month - 1, day) + tzOffsetMinutes * 60 * 1000;
+  const endMs = startMs + 24 * 60 * 60 * 1000 - 1;
+
+  return {
+    from: new Date(startMs),
+    to: new Date(endMs),
+  };
 }
 
 function inLastDays(isoDateTime: string, dayCount: number): boolean {
@@ -230,21 +245,34 @@ export async function createMoodEntry(input: CreateEntryInput): Promise<MoodEntr
   return rowToMoodEntry(rows[0]!);
 }
 
-export async function listMoodEntriesByDate(userId: string, date: string): Promise<MoodEntry[]> {
+export async function listMoodEntriesByDate(
+  userId: string,
+  date: string,
+  tzOffsetMinutes = 0,
+): Promise<MoodEntry[]> {
+  const { from, to } = buildUtcRangeForLocalDate(date, tzOffsetMinutes);
+
   if (!hasDatabaseUrl()) {
     return Array.from(getStore().entries.values())
-      .filter((entry) => entry.userId === userId && entry.occurredAt.startsWith(date))
+      .filter((entry) => {
+        if (entry.userId !== userId) return false;
+        const occurredAtMs = parseDate(entry.occurredAt).getTime();
+        return occurredAtMs >= from.getTime() && occurredAtMs <= to.getTime();
+      })
       .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
   }
 
   const db = getDb();
-  const from = new Date(`${date}T00:00:00.000Z`);
-  const to = new Date(`${date}T23:59:59.999Z`);
-
   const rows = await db
     .select()
     .from(moodEntries)
-    .where(and(eq(moodEntries.userId, userId), gte(moodEntries.occurredAt, from), sql`${moodEntries.occurredAt} <= ${to}`))
+    .where(
+      and(
+        eq(moodEntries.userId, userId),
+        gte(moodEntries.occurredAt, from),
+        lte(moodEntries.occurredAt, to),
+      ),
+    )
     .orderBy(moodEntries.occurredAt);
 
   return rows.map(rowToMoodEntry);

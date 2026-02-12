@@ -3,19 +3,24 @@ import { toMoodScore } from "@emotion-journey/domain";
 import { createMoodEntry, listMoodEntriesByDate } from "@/lib/data-store";
 import { fail, ok, unauthorized } from "@/lib/http";
 import { getCurrentUserId } from "@/lib/auth";
-import { dailyDateQuerySchema, moodEntryCreateSchema } from "@/lib/validation";
+import { dailyDateWithTimezoneSchema, moodEntryCreateSchema } from "@/lib/validation";
 
 export async function GET(request: NextRequest) {
   const userId = await getCurrentUserId();
   if (!userId) return unauthorized();
 
   const date = request.nextUrl.searchParams.get("date") ?? "";
-  const parsed = dailyDateQuerySchema.safeParse({ date });
+  const tzOffsetMinutes = request.nextUrl.searchParams.get("tzOffsetMinutes") ?? "0";
+  const parsed = dailyDateWithTimezoneSchema.safeParse({ date, tzOffsetMinutes });
   if (!parsed.success) {
     return fail("date 参数格式错误，应为 YYYY-MM-DD", 422);
   }
 
-  const entries = await listMoodEntriesByDate(userId, parsed.data.date);
+  const entries = await listMoodEntriesByDate(
+    userId,
+    parsed.data.date,
+    parsed.data.tzOffsetMinutes,
+  );
   return ok(entries);
 }
 

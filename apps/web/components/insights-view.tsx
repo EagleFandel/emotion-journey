@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TrendPoint, TriggerInsight } from "@emotion-journey/domain";
-import { fetchTrend, fetchTriggers } from "@/lib/api-client";
+import { fetchTrend, fetchTriggers, getErrorMessage } from "@/lib/api-client";
 import { TrendChart } from "@/components/trend-chart";
 import { TriggerList } from "@/components/trigger-list";
 
@@ -11,24 +11,38 @@ export function InsightsView() {
   const [trends, setTrends] = useState<TrendPoint[]>([]);
   const [triggers, setTriggers] = useState<TriggerInsight[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const cacheRef = useRef<Record<"week" | "month", { trends: TrendPoint[]; triggers: TriggerInsight[] } | null>>({
+    week: null,
+    month: null,
+  });
 
   useEffect(() => {
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      void (async () => {
-        const [trendData, triggerData] = await Promise.all([fetchTrend(range), fetchTriggers(range)]);
-        if (!cancelled) {
-          setTrends(trendData);
-          setTriggers(triggerData);
-          setIsLoading(false);
-        }
-      })();
-    }, 0);
+    void (async () => {
+      const cached = cacheRef.current[range];
+      if (cached) {
+        setTrends(cached.trends);
+        setTriggers(cached.triggers);
+        setError(null);
+        setIsLoading(false);
+        return;
+      }
 
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
+      setIsLoading(true);
+      setError(null);
+      try {
+        const [trendData, triggerData] = await Promise.all([fetchTrend(range), fetchTriggers(range)]);
+        cacheRef.current[range] = { trends: trendData, triggers: triggerData };
+        setTrends(trendData);
+        setTriggers(triggerData);
+      } catch (err) {
+        setTrends([]);
+        setTriggers([]);
+        setError(getErrorMessage(err));
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, [range]);
 
   return (
@@ -40,7 +54,6 @@ export function InsightsView() {
             type="button"
             className={`rounded-full px-3 py-1 ${range === "week" ? "bg-stone-900 text-white" : ""}`}
             onClick={() => {
-              setIsLoading(true);
               setRange("week");
             }}
           >
@@ -50,7 +63,6 @@ export function InsightsView() {
             type="button"
             className={`rounded-full px-3 py-1 ${range === "month" ? "bg-stone-900 text-white" : ""}`}
             onClick={() => {
-              setIsLoading(true);
               setRange("month");
             }}
           >
@@ -61,6 +73,8 @@ export function InsightsView() {
 
       {isLoading ? (
         <div className="paper-card h-72 animate-pulse" />
+      ) : error ? (
+        <div className="paper-card p-4 text-sm text-red-700">{error}</div>
       ) : (
         <>
           <TrendChart points={trends} />

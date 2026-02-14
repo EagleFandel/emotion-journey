@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { DailyReview, MoodEntry } from "@emotion-journey/domain";
 import { ReviewCard } from "@/components/review-card";
-import { fetchDailyReview, fetchMoodEntries, generateDailyReview } from "@/lib/api-client";
+import { fetchDailyReview, fetchMoodEntries, generateDailyReview, getErrorMessage } from "@/lib/api-client";
 import { getTodayKey } from "@/lib/date";
 
 export function ReviewView() {
@@ -12,33 +12,38 @@ export function ReviewView() {
   const [review, setReview] = useState<DailyReview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      void (async () => {
+    void (async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
         const [entryData, reviewData] = await Promise.all([
           fetchMoodEntries(date),
           fetchDailyReview(date),
         ]);
-        if (!cancelled) {
-          setEntries(entryData);
-          setReview(reviewData);
-          setIsLoading(false);
-        }
-      })();
-    }, 0);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
+        setEntries(entryData);
+        setReview(reviewData);
+      } catch (err) {
+        setEntries([]);
+        setReview(null);
+        setError(getErrorMessage(err));
+      } finally {
+        setIsLoading(false);
+      }
+    })();
   }, [date]);
 
   async function handleGenerate() {
-    const created = await generateDailyReview(date);
-    setReview(created);
-    setMessage("复盘已生成");
+    try {
+      const created = await generateDailyReview(date);
+      setReview(created);
+      setMessage("复盘已生成");
+      setError(null);
+    } catch (err) {
+      setMessage(getErrorMessage(err));
+    }
   }
 
   return (
@@ -54,7 +59,13 @@ export function ReviewView() {
         </button>
       </header>
 
-      {isLoading ? <div className="paper-card h-56 animate-pulse" /> : <ReviewCard review={review} entries={entries} />}
+      {isLoading ? (
+        <div className="paper-card h-56 animate-pulse" />
+      ) : error ? (
+        <div className="paper-card p-4 text-sm text-red-700">{error}</div>
+      ) : (
+        <ReviewCard review={review} entries={entries} />
+      )}
 
       {message ? <p className="text-sm text-stone-700">{message}</p> : null}
     </main>

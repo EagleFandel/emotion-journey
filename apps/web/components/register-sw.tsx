@@ -7,8 +7,26 @@ export function RegisterServiceWorker() {
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
       return;
     }
+    if (process.env.NODE_ENV !== "production") {
+      return;
+    }
 
-    void navigator.serviceWorker.register("/sw.js");
+    let reloaded = false;
+    const onControllerChange = () => {
+      if (reloaded) return;
+      reloaded = true;
+      window.location.reload();
+    };
+
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+
+    void navigator.serviceWorker.register("/sw.js").then((registration) => {
+      void registration.update();
+    });
+
+    return () => {
+      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+    };
   }, []);
 
   return null;

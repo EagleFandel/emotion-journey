@@ -29,7 +29,7 @@ function saveQueue(queue: OfflineQueuedEntry[]) {
 }
 
 export function useOfflineQueue() {
-  const [count, setCount] = useState(() => (typeof window !== "undefined" ? readQueue().length : 0));
+  const [count, setCount] = useState(0);
 
   function enqueue(payload: OfflineQueuedEntry) {
     const queue = readQueue();
@@ -68,6 +68,8 @@ export function useOfflineQueue() {
   }
 
   useEffect(() => {
+    setCount(readQueue().length);
+
     function onOnline() {
       void flush();
     }

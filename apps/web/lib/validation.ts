@@ -32,6 +32,11 @@ export const dailyDateWithTimezoneSchema = dailyDateQuerySchema.extend({
   tzOffsetMinutes: z.coerce.number().int().min(-840).max(840).default(0),
 });
 
+export const adminMetricsQuerySchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  tzOffsetMinutes: z.coerce.number().int().min(-840).max(840).default(0),
+});
+
 export const rangeQuerySchema = z.object({
   range: z.enum(["week", "month"]).default("week"),
 });

@@ -5,38 +5,32 @@ import type { MoodEntry } from "@emotion-journey/domain";
 import { AddMoodEntryForm } from "@/components/add-mood-entry-form";
 import { EntryList } from "@/components/entry-list";
 import { MoodCurveChart } from "@/components/mood-curve-chart";
-import { fetchMoodEntries } from "@/lib/api-client";
+import { fetchMoodEntries, getErrorMessage } from "@/lib/api-client";
 import { getTodayKey } from "@/lib/date";
 
 export function TodayView() {
   const [entries, setEntries] = useState<MoodEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const date = getTodayKey();
-    const data = await fetchMoodEntries(date);
-    setEntries(data);
-    setIsLoading(false);
+    setIsLoading(true);
+    setError(null);
+    try {
+      const date = getTodayKey();
+      const data = await fetchMoodEntries(date);
+      setEntries(data);
+    } catch (err) {
+      setEntries([]);
+      setError(getErrorMessage(err));
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      void (async () => {
-        const date = getTodayKey();
-        const data = await fetchMoodEntries(date);
-        if (!cancelled) {
-          setEntries(data);
-          setIsLoading(false);
-        }
-      })();
-    }, 0);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
-  }, []);
+    void load();
+  }, [load]);
 
   return (
     <main className="page-container space-y-4">
@@ -44,6 +38,8 @@ export function TodayView() {
         <h1 className="section-title">今天</h1>
         {isLoading ? (
           <div className="paper-card h-80 animate-pulse" />
+        ) : error ? (
+          <div className="paper-card flex h-80 items-center justify-center text-sm text-red-700">{error}</div>
         ) : (
           <MoodCurveChart entries={entries} />
         )}

@@ -1,4 +1,4 @@
-import {
+﻿import {
   and,
   eq,
   gte,
@@ -13,9 +13,8 @@ import {
 } from "@emotion-journey/domain";
 import { DEFAULT_LEXICON, DEFAULT_RISK_TERMS } from "@emotion-journey/config";
 import { parseEmotion } from "@emotion-journey/rule-engine";
-import { hasDatabaseUrl } from "./db/client";
 import { appConfig, dailyReviews, moodEntries, users } from "./db/schema";
-import { getDb } from "./db/client";
+import { getDb, shouldUseInMemoryStore } from "./db/client";
 
 interface UserAccount {
   id: string;
@@ -142,7 +141,7 @@ async function dbGetRiskTerms(): Promise<string[]> {
 export async function upsertUserByEmail(email: string): Promise<UserAccount> {
   const normalized = email.trim().toLowerCase();
 
-  if (!hasDatabaseUrl()) {
+  if (shouldUseInMemoryStore()) {
     const store = getStore();
     const existing = store.users.get(normalized);
     if (existing) {
@@ -184,7 +183,7 @@ export async function upsertUserByEmail(email: string): Promise<UserAccount> {
 }
 
 export async function getUser(userId: string): Promise<UserAccount | null> {
-  if (!hasDatabaseUrl()) {
+  if (shouldUseInMemoryStore()) {
     return getStore().users.get(userId) ?? null;
   }
 
@@ -200,7 +199,7 @@ export async function getUser(userId: string): Promise<UserAccount | null> {
 }
 
 export async function createMoodEntry(input: CreateEntryInput): Promise<MoodEntry> {
-  if (!hasDatabaseUrl()) {
+  if (shouldUseInMemoryStore()) {
     const store = getStore();
     const now = new Date().toISOString();
     const parsed = parseEmotion(input.note, input.score, {
@@ -252,7 +251,7 @@ export async function listMoodEntriesByDate(
 ): Promise<MoodEntry[]> {
   const { from, to } = buildUtcRangeForLocalDate(date, tzOffsetMinutes);
 
-  if (!hasDatabaseUrl()) {
+  if (shouldUseInMemoryStore()) {
     return Array.from(getStore().entries.values())
       .filter((entry) => {
         if (entry.userId !== userId) return false;
@@ -279,7 +278,7 @@ export async function listMoodEntriesByDate(
 }
 
 export async function listAllMoodEntries(userId: string): Promise<MoodEntry[]> {
-  if (!hasDatabaseUrl()) {
+  if (shouldUseInMemoryStore()) {
     return Array.from(getStore().entries.values())
       .filter((entry) => entry.userId === userId)
       .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
@@ -296,7 +295,7 @@ export async function listAllMoodEntries(userId: string): Promise<MoodEntry[]> {
 }
 
 export async function listMoodEntriesByRange(userId: string, range: "week" | "month"): Promise<MoodEntry[]> {
-  if (!hasDatabaseUrl()) {
+  if (shouldUseInMemoryStore()) {
     const days = range === "week" ? 7 : 30;
     return Array.from(getStore().entries.values())
       .filter((entry) => entry.userId === userId && inLastDays(entry.occurredAt, days))
@@ -321,7 +320,7 @@ export async function updateMoodEntry(
   entryId: string,
   patch: UpdateEntryInput,
 ): Promise<MoodEntry | null> {
-  if (!hasDatabaseUrl()) {
+  if (shouldUseInMemoryStore()) {
     const store = getStore();
     const entry = store.entries.get(entryId);
     if (!entry || entry.userId !== userId) return null;
@@ -379,7 +378,7 @@ export async function updateMoodEntry(
 }
 
 export async function removeMoodEntry(userId: string, entryId: string): Promise<boolean> {
-  if (!hasDatabaseUrl()) {
+  if (shouldUseInMemoryStore()) {
     const store = getStore();
     const entry = store.entries.get(entryId);
     if (!entry || entry.userId !== userId) {
@@ -398,7 +397,7 @@ export async function removeMoodEntry(userId: string, entryId: string): Promise<
 }
 
 export async function saveReview(review: DailyReview): Promise<DailyReview> {
-  if (!hasDatabaseUrl()) {
+  if (shouldUseInMemoryStore()) {
     const store = getStore();
     store.reviews.set(reviewKey(review.userId, review.date), review);
     return review;
@@ -436,7 +435,7 @@ export async function saveReview(review: DailyReview): Promise<DailyReview> {
 }
 
 export async function getReview(userId: string, date: string): Promise<DailyReview | null> {
-  if (!hasDatabaseUrl()) {
+  if (shouldUseInMemoryStore()) {
     return getStore().reviews.get(reviewKey(userId, date)) ?? null;
   }
 
@@ -451,14 +450,14 @@ export async function getReview(userId: string, date: string): Promise<DailyRevi
 }
 
 export async function getLexicon(): Promise<LexiconItem[]> {
-  if (!hasDatabaseUrl()) {
+  if (shouldUseInMemoryStore()) {
     return structuredClone(getStore().lexicon);
   }
   return dbGetLexicon();
 }
 
 export async function setLexicon(lexicon: LexiconItem[]): Promise<LexiconItem[]> {
-  if (!hasDatabaseUrl()) {
+  if (shouldUseInMemoryStore()) {
     const store = getStore();
     store.lexicon = structuredClone(lexicon);
     return structuredClone(store.lexicon);
@@ -484,14 +483,14 @@ export async function setLexicon(lexicon: LexiconItem[]): Promise<LexiconItem[]>
 }
 
 export async function getRiskTerms(): Promise<string[]> {
-  if (!hasDatabaseUrl()) {
+  if (shouldUseInMemoryStore()) {
     return [...getStore().riskTerms];
   }
   return dbGetRiskTerms();
 }
 
 export async function setRiskTerms(riskTerms: string[]): Promise<string[]> {
-  if (!hasDatabaseUrl()) {
+  if (shouldUseInMemoryStore()) {
     const store = getStore();
     store.riskTerms = [...riskTerms];
     return [...store.riskTerms];
@@ -516,13 +515,15 @@ export async function setRiskTerms(riskTerms: string[]): Promise<string[]> {
   return riskTerms;
 }
 
-export async function getAdminMetrics(): Promise<AdminMetrics> {
-  if (!hasDatabaseUrl()) {
+export async function getAdminMetrics(date: string, tzOffsetMinutes: number): Promise<AdminMetrics> {
+  const { from, to } = buildUtcRangeForLocalDate(date, tzOffsetMinutes);
+
+  if (shouldUseInMemoryStore()) {
     const store = getStore();
-    const today = new Date().toISOString().slice(0, 10);
-    const todayEntries = Array.from(store.entries.values()).filter((entry) =>
-      entry.occurredAt.startsWith(today),
-    );
+    const todayEntries = Array.from(store.entries.values()).filter((entry) => {
+      const occurredAtMs = parseDate(entry.occurredAt).getTime();
+      return occurredAtMs >= from.getTime() && occurredAtMs <= to.getTime();
+    });
     const riskSignalsToday = todayEntries.filter((entry) =>
       parseEmotion(entry.note, entry.score, {
         lexicon: store.lexicon,
@@ -547,7 +548,7 @@ export async function getAdminMetrics(): Promise<AdminMetrics> {
     db
       .select()
       .from(moodEntries)
-      .where(gte(moodEntries.occurredAt, new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z"))),
+      .where(and(gte(moodEntries.occurredAt, from), lte(moodEntries.occurredAt, to))),
   ]);
 
   const [lexicon, riskTerms] = await Promise.all([dbGetLexicon(), dbGetRiskTerms()]);
@@ -568,7 +569,7 @@ export async function exportUserPayload(userId: string) {
   const user = await getUser(userId);
   const entries = await listAllMoodEntries(userId);
 
-  if (!hasDatabaseUrl()) {
+  if (shouldUseInMemoryStore()) {
     const reviews = Array.from(getStore().reviews.values()).filter((review) => review.userId === userId);
     return {
       user,
@@ -590,7 +591,7 @@ export async function exportUserPayload(userId: string) {
 }
 
 export async function deleteUserCompletely(userId: string): Promise<void> {
-  if (!hasDatabaseUrl()) {
+  if (shouldUseInMemoryStore()) {
     const store = getStore();
     store.users.delete(userId);
     for (const [id, entry] of store.entries.entries()) {
@@ -611,7 +612,7 @@ export async function deleteUserCompletely(userId: string): Promise<void> {
 }
 
 export async function resetStoreForTests(): Promise<void> {
-  if (hasDatabaseUrl()) {
+  if (!shouldUseInMemoryStore()) {
     const db = getDb();
     await db.delete(appConfig);
     await db.delete(dailyReviews);
@@ -623,3 +624,4 @@ export async function resetStoreForTests(): Promise<void> {
   const target = globalThis as typeof globalThis & { [storeKey]?: StoreState };
   target[storeKey] = buildInitialState();
 }
+

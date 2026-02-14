@@ -42,6 +42,15 @@ docker compose logs -f web
 docker compose logs -f db
 ```
 
+When the web container starts, it logs persistence mode once:
+
+- `mode=database`: expected for production
+- `mode=memory-dev`: development/test fallback only
+- `mode=blocked-production`: production is running without `DATABASE_URL`
+
+If you see `mode=blocked-production`, all data APIs will return `503` with code
+`PERSISTENCE_UNAVAILABLE` until database configuration is fixed.
+
 ## 4) Stop / restart
 
 ```bash
@@ -72,3 +81,4 @@ docker compose down -v
 - Do not expose PostgreSQL to the public internet
 - Bind `POSTGRES_PORT` to localhost or private network only
 - Keep regular backups of volume `emotion_journey_db`
+- Ensure `DATABASE_URL` is present in production runtime configuration

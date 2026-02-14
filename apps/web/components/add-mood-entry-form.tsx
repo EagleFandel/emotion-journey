@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useOfflineQueue } from "@/lib/offline";
 import { scoreLabel } from "@emotion-journey/ui";
 
@@ -8,15 +8,25 @@ interface AddMoodEntryFormProps {
   onCreated: () => Promise<void> | void;
 }
 
+async function readErrorMessage(response: Response): Promise<string> {
+  const payload = (await response.json().catch(() => null)) as { error?: string; code?: string } | null;
+  if (payload?.code === "PERSISTENCE_UNAVAILABLE") {
+    return "数据库不可用，请联系管理员检查部署配置。";
+  }
+  return payload?.error ?? "保存失败，请稍后重试。";
+}
+
 export function AddMoodEntryForm({ onCreated }: AddMoodEntryFormProps) {
-  const now = useMemo(() => new Date(), []);
-  const defaultHour = now.getHours();
-  const [hour, setHour] = useState(defaultHour);
+  const [hour, setHour] = useState(12);
   const [score, setScore] = useState(0);
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const queue = useOfflineQueue();
+
+  useEffect(() => {
+    setHour(new Date().getHours());
+  }, []);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,28 +44,33 @@ export function AddMoodEntryForm({ onCreated }: AddMoodEntryFormProps) {
     };
 
     try {
-      const response = await fetch("/api/mood-entries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      let response: Response;
+      try {
+        response = await fetch("/api/mood-entries", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        queue.enqueue({
+          occurredAt: payload.occurredAt,
+          score,
+          note,
+          source: "offline_queue",
+        });
+        setMessage("网络异常，已离线暂存，联网后自动补写。");
+        return;
+      }
 
       if (!response.ok) {
-        throw new Error("save_failed");
+        setMessage(await readErrorMessage(response));
+        return;
       }
 
       setNote("");
       setMessage("已记录");
       if (navigator.vibrate) navigator.vibrate(30);
       await onCreated();
-    } catch {
-      queue.enqueue({
-        occurredAt: payload.occurredAt,
-        score,
-        note,
-        source: "offline_queue",
-      });
-      setMessage("离线暂存，联网后自动补写");
     } finally {
       setIsSubmitting(false);
     }

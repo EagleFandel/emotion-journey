@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import type { AdminMetrics, LexiconItem } from "@emotion-journey/domain";
+import { getTodayKey, getTimezoneOffsetMinutes } from "@/lib/date";
+import { getErrorMessage } from "@/lib/api-client";
 
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
@@ -10,14 +12,27 @@ export default function DashboardPage() {
   const [status, setStatus] = useState<string | null>(null);
 
   async function load() {
+    const metricsParams = new URLSearchParams({
+      date: getTodayKey(),
+      tzOffsetMinutes: String(getTimezoneOffsetMinutes()),
+    });
+
     const [metricsResponse, lexiconResponse, riskResponse] = await Promise.all([
-      fetch("/api/admin/metrics"),
+      fetch(`/api/admin/metrics?${metricsParams.toString()}`),
       fetch("/api/admin/lexicon"),
       fetch("/api/admin/risk-terms"),
     ]);
 
     if (!metricsResponse.ok) {
-      setStatus("你没有后台权限，请将账号加入 ADMIN_USERS 环境变量。");
+      const payload = (await metricsResponse.json().catch(() => null)) as { error?: string } | null;
+      setStatus(payload?.error ?? "你没有后台权限，请将账号加入 ADMIN_USERS 环境变量。");
+      setMetrics(null);
+      return;
+    }
+
+    if (!lexiconResponse.ok || !riskResponse.ok) {
+      setStatus("后台配置加载失败，请稍后重试。");
+      setMetrics(null);
       return;
     }
 
@@ -31,18 +46,13 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    let cancelled = false;
-    const timer = window.setTimeout(() => {
-      void (async () => {
-        if (cancelled) return;
+    void (async () => {
+      try {
         await load();
-      })();
-    }, 0);
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-    };
+      } catch (err) {
+        setStatus(getErrorMessage(err));
+      }
+    })();
   }, []);
 
   async function saveLexicon() {

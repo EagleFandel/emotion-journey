@@ -56,7 +56,8 @@ See `.env.example`:
 Runtime behavior:
 
 - If `DATABASE_URL` is set: use PostgreSQL
-- If `DATABASE_URL` is empty: fallback to in-memory store (dev/demo)
+- If `DATABASE_URL` is empty in development/test: fallback to in-memory store
+- If `DATABASE_URL` is empty in production: persistence is blocked and APIs return `503` (`PERSISTENCE_UNAVAILABLE`)
 
 
 ## Docker (Recommended for first server deploy)

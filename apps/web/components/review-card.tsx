@@ -5,6 +5,14 @@ interface ReviewCardProps {
   entries: MoodEntry[];
 }
 
+function formatLocalTime(isoDateTime: string): string {
+  return new Date(isoDateTime).toLocaleTimeString("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
 function findEntry(entries: MoodEntry[], id: string | null): MoodEntry | null {
   if (!id) return null;
   return entries.find((entry) => entry.id === id) ?? null;
@@ -25,14 +33,14 @@ export function ReviewCard({ review, entries }: ReviewCardProps) {
         <div className="rounded-xl border border-stone-200 bg-white px-3 py-2">
           <p className="text-xs text-stone-500">波峰</p>
           <p className="text-sm font-medium">
-            {peak ? `${peak.occurredAt.slice(11, 16)} · ${peak.score}` : "暂无"}
+            {peak ? `${formatLocalTime(peak.occurredAt)} · ${peak.score}` : "暂无"}
           </p>
           <p className="text-sm text-stone-700">{peak?.note || "-"}</p>
         </div>
         <div className="rounded-xl border border-stone-200 bg-white px-3 py-2">
           <p className="text-xs text-stone-500">波谷</p>
           <p className="text-sm font-medium">
-            {valley ? `${valley.occurredAt.slice(11, 16)} · ${valley.score}` : "暂无"}
+            {valley ? `${formatLocalTime(valley.occurredAt)} · ${valley.score}` : "暂无"}
           </p>
           <p className="text-sm text-stone-700">{valley?.note || "-"}</p>
         </div>

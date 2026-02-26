@@ -1,7 +1,7 @@
 "use client";
 
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { hourLabel } from "@emotion-journey/ui";
+import { hourLabel, scoreLabel } from "@emotion-journey/ui";
 import type { MoodEntry } from "@emotion-journey/domain";
 
 function toChartData(entries: MoodEntry[]) {
@@ -17,13 +17,18 @@ function toChartData(entries: MoodEntry[]) {
     .sort((a, b) => a.time - b.time);
 }
 
-export function MoodCurveChart({ entries }: { entries: MoodEntry[] }) {
+interface MoodCurveChartProps {
+  entries: MoodEntry[];
+  emptyText?: string;
+}
+
+export function MoodCurveChart({ entries, emptyText = "先点一下今天第一个情绪点" }: MoodCurveChartProps) {
   const data = toChartData(entries);
 
   if (data.length === 0) {
     return (
       <div className="paper-card axis-grid flex h-80 items-center justify-center text-stone-500">
-        先点一下今天第一个情绪点
+        {emptyText}
       </div>
     );
   }
@@ -40,7 +45,10 @@ export function MoodCurveChart({ entries }: { entries: MoodEntry[] }) {
           />
           <YAxis domain={[-5, 5]} ticks={[-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5]} stroke="#1f2937" />
           <Tooltip
-            formatter={(value) => [value, "情绪分值"]}
+            formatter={(value) => {
+              const score = Number(value);
+              return [`${score}（${scoreLabel(score)}）`, "情绪分值"];
+            }}
             labelFormatter={(value) => `时间 ${hourLabel(Number(value))}`}
             contentStyle={{ borderRadius: 12, border: "1px solid #e8e1d0" }}
           />

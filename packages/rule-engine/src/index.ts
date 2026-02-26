@@ -31,30 +31,47 @@ function unique<T>(values: T[]): T[] {
   return [...new Set(values)];
 }
 
+function normalizeText(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function hasKeyword(text: string, keyword: string): boolean {
+  const normalizedKeyword = normalizeText(keyword);
+  if (!normalizedKeyword) return false;
+  return text.includes(normalizedKeyword);
+}
+
+function clampBias(totalBias: number): number {
+  return Math.max(-3, Math.min(3, totalBias));
+}
+
 export function parseEmotion(note: string, score: number, options?: RuleEngineOptions): ParsedEmotion {
   const lexicon = options?.lexicon ?? DEFAULT_LEXICON;
   const riskTerms = options?.riskTerms ?? DEFAULT_RISK_TERMS;
-  const text = note.trim();
+  const text = normalizeText(note);
 
   const tags: MoodTag[] = [];
   const triggerKeys: string[] = [];
-  let adjustedScore = score;
+  let totalBias = 0;
 
   for (const item of lexicon) {
-    if (text.includes(item.keyword)) {
+    if (hasKeyword(text, item.keyword)) {
       tags.push(...item.tags);
       triggerKeys.push(item.triggerKey);
-      adjustedScore += item.scoreBias ?? 0;
+      totalBias += item.scoreBias ?? 0;
     }
   }
 
+  const adjustedScore = score + clampBias(totalBias);
   const normalizedScore = toMoodScore(adjustedScore);
-  if (normalizedScore >= 3) tags.push("开心");
-  if (normalizedScore <= -3) tags.push("沮丧");
+
+  if (normalizedScore >= 2) tags.push("开心");
+  if (normalizedScore >= 4) tags.push("成就感");
+  if (normalizedScore <= -2) tags.push("沮丧");
   if (normalizedScore <= -1 && !tags.some((tag) => NEGATIVE_TAGS.includes(tag))) tags.push("焦虑");
   if (normalizedScore >= -1 && normalizedScore <= 1 && tags.length === 0) tags.push("平静");
 
-  const hasRiskSignal = riskTerms.some((term) => text.includes(term));
+  const hasRiskSignal = riskTerms.some((term) => hasKeyword(text, term));
 
   return {
     tags: unique(tags),

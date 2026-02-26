@@ -5,6 +5,7 @@
   lte,
 } from "drizzle-orm";
 import {
+  type AdminUserSummary,
   type AdminMetrics,
   type DailyReview,
   type LexiconItem,
@@ -70,6 +71,50 @@ function reviewKey(userId: string, date: string): string {
 
 function parseDate(value: string): Date {
   return new Date(value);
+}
+
+function normalizeLexicon(lexicon: LexiconItem[]): LexiconItem[] {
+  const dedup = new Map<string, LexiconItem>();
+
+  for (const item of lexicon) {
+    const keyword = item.keyword.trim();
+    const triggerKey = item.triggerKey.trim();
+    if (!keyword || !triggerKey) continue;
+
+    const tags = [...new Set(item.tags)];
+    const scoreBias = item.scoreBias;
+    const key = `${keyword.toLowerCase()}|${triggerKey.toLowerCase()}|${tags.join(",")}|${scoreBias ?? ""}`;
+    if (dedup.has(key)) continue;
+
+    dedup.set(key, {
+      keyword,
+      tags,
+      triggerKey,
+      ...(scoreBias !== undefined ? { scoreBias } : {}),
+    });
+  }
+
+  const normalized = Array.from(dedup.values()).sort((a, b) => {
+    if (b.keyword.length !== a.keyword.length) return b.keyword.length - a.keyword.length;
+    return a.keyword.localeCompare(b.keyword);
+  });
+  return normalized.length > 0 ? normalized : structuredClone(DEFAULT_LEXICON);
+}
+
+function normalizeRiskTerms(riskTerms: string[]): string[] {
+  const dedup = new Map<string, string>();
+
+  for (const term of riskTerms) {
+    const normalized = term.trim();
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (!dedup.has(key)) {
+      dedup.set(key, normalized);
+    }
+  }
+
+  const normalized = Array.from(dedup.values()).sort((a, b) => b.length - a.length);
+  return normalized.length > 0 ? normalized : [...DEFAULT_RISK_TERMS];
 }
 
 function buildUtcRangeForLocalDate(date: string, tzOffsetMinutes: number): { from: Date; to: Date } {
@@ -457,9 +502,11 @@ export async function getLexicon(): Promise<LexiconItem[]> {
 }
 
 export async function setLexicon(lexicon: LexiconItem[]): Promise<LexiconItem[]> {
+  const normalizedLexicon = normalizeLexicon(lexicon);
+
   if (shouldUseInMemoryStore()) {
     const store = getStore();
-    store.lexicon = structuredClone(lexicon);
+    store.lexicon = structuredClone(normalizedLexicon);
     return structuredClone(store.lexicon);
   }
 
@@ -468,18 +515,18 @@ export async function setLexicon(lexicon: LexiconItem[]): Promise<LexiconItem[]>
     .insert(appConfig)
     .values({
       key: "lexicon",
-      value: { lexicon },
+      value: { lexicon: normalizedLexicon },
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
       target: appConfig.key,
       set: {
-        value: { lexicon },
+        value: { lexicon: normalizedLexicon },
         updatedAt: new Date(),
       },
     });
 
-  return lexicon;
+  return normalizedLexicon;
 }
 
 export async function getRiskTerms(): Promise<string[]> {
@@ -490,9 +537,11 @@ export async function getRiskTerms(): Promise<string[]> {
 }
 
 export async function setRiskTerms(riskTerms: string[]): Promise<string[]> {
+  const normalizedRiskTerms = normalizeRiskTerms(riskTerms);
+
   if (shouldUseInMemoryStore()) {
     const store = getStore();
-    store.riskTerms = [...riskTerms];
+    store.riskTerms = [...normalizedRiskTerms];
     return [...store.riskTerms];
   }
 
@@ -501,18 +550,18 @@ export async function setRiskTerms(riskTerms: string[]): Promise<string[]> {
     .insert(appConfig)
     .values({
       key: "risk_terms",
-      value: { riskTerms },
+      value: { riskTerms: normalizedRiskTerms },
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
       target: appConfig.key,
       set: {
-        value: { riskTerms },
+        value: { riskTerms: normalizedRiskTerms },
         updatedAt: new Date(),
       },
     });
 
-  return riskTerms;
+  return normalizedRiskTerms;
 }
 
 export async function getAdminMetrics(date: string, tzOffsetMinutes: number): Promise<AdminMetrics> {
@@ -563,6 +612,90 @@ export async function getAdminMetrics(date: string, tzOffsetMinutes: number): Pr
     reviewsGenerated: reviewRows.length,
     riskSignalsToday,
   };
+}
+
+export async function listAdminUsers(): Promise<AdminUserSummary[]> {
+  if (shouldUseInMemoryStore()) {
+    const store = getStore();
+    const summaryMap = new Map<string, AdminUserSummary>();
+
+    for (const user of store.users.values()) {
+      summaryMap.set(user.id, {
+        id: user.id,
+        email: user.email,
+        createdAt: user.createdAt,
+        entryCount: 0,
+        lastEntryAt: null,
+      });
+    }
+
+    for (const entry of store.entries.values()) {
+      const current = summaryMap.get(entry.userId) ?? {
+        id: entry.userId,
+        email: entry.userId,
+        createdAt: entry.createdAt,
+        entryCount: 0,
+        lastEntryAt: null,
+      };
+
+      current.entryCount += 1;
+      if (!current.lastEntryAt || entry.occurredAt > current.lastEntryAt) {
+        current.lastEntryAt = entry.occurredAt;
+      }
+      summaryMap.set(entry.userId, current);
+    }
+
+    return Array.from(summaryMap.values()).sort((a, b) => {
+      if (b.entryCount !== a.entryCount) return b.entryCount - a.entryCount;
+      if (a.email !== b.email) return a.email.localeCompare(b.email);
+      return a.createdAt.localeCompare(b.createdAt);
+    });
+  }
+
+  const db = getDb();
+  const [userRows, entryRows] = await Promise.all([
+    db.select().from(users),
+    db
+      .select({
+        userId: moodEntries.userId,
+        occurredAt: moodEntries.occurredAt,
+      })
+      .from(moodEntries),
+  ]);
+
+  const summaryMap = new Map<string, AdminUserSummary>();
+  for (const user of userRows) {
+    summaryMap.set(user.id, {
+      id: user.id,
+      email: user.email,
+      createdAt: user.createdAt.toISOString(),
+      entryCount: 0,
+      lastEntryAt: null,
+    });
+  }
+
+  for (const row of entryRows) {
+    const current = summaryMap.get(row.userId) ?? {
+      id: row.userId,
+      email: row.userId,
+      createdAt: row.occurredAt.toISOString(),
+      entryCount: 0,
+      lastEntryAt: null,
+    };
+
+    current.entryCount += 1;
+    const occurredAtIso = row.occurredAt.toISOString();
+    if (!current.lastEntryAt || occurredAtIso > current.lastEntryAt) {
+      current.lastEntryAt = occurredAtIso;
+    }
+    summaryMap.set(row.userId, current);
+  }
+
+  return Array.from(summaryMap.values()).sort((a, b) => {
+    if (b.entryCount !== a.entryCount) return b.entryCount - a.entryCount;
+    if (a.email !== b.email) return a.email.localeCompare(b.email);
+    return a.createdAt.localeCompare(b.createdAt);
+  });
 }
 
 export async function exportUserPayload(userId: string) {

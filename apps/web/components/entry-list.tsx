@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { MoodEntry } from "@emotion-journey/domain";
+import { scoreLabel } from "@emotion-journey/ui";
 
 interface EntryListProps {
   entries: MoodEntry[];
@@ -52,7 +53,7 @@ export function EntryList({ entries, onChanged }: EntryListProps) {
             <div className="space-y-1">
               <div className="text-sm text-stone-700">
                 {formatLocalTime(entry.occurredAt)} {"\u00B7 \u5206\u503C "}
-                {entry.score}
+                {entry.score}（{scoreLabel(entry.score)}）
               </div>
               {editingId === entry.id ? (
                 <textarea

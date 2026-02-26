@@ -72,6 +72,14 @@ export interface AdminMetrics {
   riskSignalsToday: number;
 }
 
+export interface AdminUserSummary {
+  id: string;
+  email: string;
+  createdAt: string;
+  entryCount: number;
+  lastEntryAt: string | null;
+}
+
 export const MOOD_SCORE_MIN = -5;
 export const MOOD_SCORE_MAX = 5;
 

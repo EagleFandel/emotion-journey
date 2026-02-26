@@ -5,6 +5,7 @@ import {
   exportUserPayload,
   getAdminMetrics,
   getReview,
+  listAdminUsers,
   listMoodEntriesByDate,
   resetStoreForTests,
   saveReview,
@@ -91,6 +92,36 @@ describe("integration data flow", () => {
     const entries = await listMoodEntriesByDate(userId, date, -480);
     expect(entries).toHaveLength(1);
     expect(entries[0]?.id).toBe(earlyUtc.id);
+  });
+
+  it("builds admin user summaries for dashboard filtering", async () => {
+    await createMoodEntry({
+      userId: "u1@example.com",
+      occurredAt: `${date}T08:00:00.000Z`,
+      score: 1,
+      note: "first",
+      source: "web",
+    });
+    await createMoodEntry({
+      userId: "u1@example.com",
+      occurredAt: `${date}T10:00:00.000Z`,
+      score: 2,
+      note: "second",
+      source: "web",
+    });
+    await createMoodEntry({
+      userId: "u2@example.com",
+      occurredAt: `${date}T09:00:00.000Z`,
+      score: -1,
+      note: "third",
+      source: "web",
+    });
+
+    const users = await listAdminUsers();
+    expect(users).toHaveLength(2);
+    expect(users[0]?.id).toBe("u1@example.com");
+    expect(users[0]?.entryCount).toBe(2);
+    expect(users[0]?.lastEntryAt).toBe(`${date}T10:00:00.000Z`);
   });
 
   it("keeps in-memory flow for test env without database", async () => {

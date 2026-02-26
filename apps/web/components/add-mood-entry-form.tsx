@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useOfflineQueue } from "@/lib/offline";
-import { scoreLabel } from "@emotion-journey/ui";
+import { scoreDescription, scoreLabel } from "@emotion-journey/ui";
 
 interface AddMoodEntryFormProps {
   onCreated: () => Promise<void> | void;
@@ -104,6 +104,7 @@ export function AddMoodEntryForm({ onCreated }: AddMoodEntryFormProps) {
           value={score}
           onChange={(event) => setScore(Number(event.target.value))}
         />
+        <p className="text-xs text-stone-600">{scoreDescription(score)}</p>
       </div>
 
       <div className="space-y-2">
